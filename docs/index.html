@@ -232,6 +232,56 @@
     section{ padding:40px 0; }
     .navlinks{ display:none; }
   }
+
+  /* ===== Motion & dynamism ===== */
+  .reveal{ opacity:1; transform:none; }
+  @media (prefers-reduced-motion: no-preference){
+    .reveal{
+      opacity:0; transform:translateY(18px);
+      transition:opacity .7s cubic-bezier(.16,.8,.24,1), transform .7s cubic-bezier(.16,.8,.24,1);
+    }
+    .reveal.in{ opacity:1; transform:translateY(0); }
+  }
+
+  .topbar{ transition:box-shadow .25s ease; }
+  .topbar.scrolled{ box-shadow:0 1px 0 var(--border), 0 16px 28px -20px rgba(0,0,0,0.35); }
+
+  .navlinks a{ position:relative; }
+  .navlinks a::after{
+    content:''; position:absolute; left:0; bottom:-3px; width:100%; height:2px; background:var(--gold);
+    transform:scaleX(0); transform-origin:left; transition:transform .3s ease;
+  }
+  .navlinks a.active{ color:var(--ink); }
+  .navlinks a.active::after{ transform:scaleX(1); }
+
+  .theme-toggle{ transition:background .15s ease, transform .12s ease; }
+  .theme-toggle:active{ transform:scale(0.94); }
+
+  @media (prefers-reduced-motion: no-preference){
+    #quadChart g[data-bubble]{ transition:opacity .2s ease; }
+    #quadChart g[data-bubble] circle, #corrChart g[data-pt] circle{
+      transition:r .18s ease, stroke-width .18s ease, fill-opacity .18s ease;
+      transform-box:fill-box; transform-origin:center;
+    }
+    #quadChart g[data-bubble]:hover circle{ stroke-width:2.6; fill-opacity:0.72; }
+    #corrChart g[data-pt]:hover circle{ r:8.5; fill-opacity:0.85; }
+    .tile svg circle{ transition:r .2s ease; }
+    .tile:hover svg circle{ r:4; }
+  }
+
+  .chip{ transition:background .15s ease, color .15s ease, border-color .15s ease, transform .12s ease; }
+  .chip:active{ transform:scale(0.96); }
+
+  .rank-item{ transition:background-color .15s ease; }
+  .rank-item:hover{ background:var(--surface-2); margin:0 -10px; padding-left:10px; padding-right:10px; border-radius:8px; }
+
+  @media (prefers-reduced-motion: no-preference){
+    tbody tr{ animation:rowIn .35s cubic-bezier(.16,.8,.24,1) both; }
+  }
+  @keyframes rowIn{ from{ opacity:0; transform:translateY(-4px);} to{ opacity:1; transform:translateY(0);} }
+
+  .concl-card, .mini-card, .chart-card{ transition:transform .25s ease, box-shadow .25s ease; }
+  .concl-card:hover, .mini-card:hover{ transform:translateY(-3px); box-shadow:0 14px 30px -22px rgba(0,0,0,0.45); }
 </style>
 
 <div class="topbar">
@@ -258,15 +308,15 @@
 
   <div class="hero-figure">
     <div class="hero-stat">
-      <div class="num tabular">+1,51<span class="unit">% anual</span></div>
+      <div class="num tabular" data-to="1.51"><span class="num-val">0,00</span><span class="unit">% anual</span></div>
       <p class="cap">Creció el <b>PIB por hora trabajada</b> en Colombia entre 2010 y 2025 — la mejor medida de cuánto produce la economía por cada hora de trabajo.</p>
     </div>
     <div class="hero-stat secondary">
-      <div class="num tabular">+1,05<span class="unit">% anual</span></div>
+      <div class="num tabular" data-to="1.05"><span class="num-val">0,00</span><span class="unit">% anual</span></div>
       <p class="cap">Creció el PIB por trabajador en el mismo periodo — menos, porque cada persona trabaja hoy menos horas por semana.</p>
     </div>
     <div class="hero-stat secondary">
-      <div class="num tabular">+3,16<span class="unit">% anual</span></div>
+      <div class="num tabular" data-to="3.16"><span class="num-val">0,00</span><span class="unit">% anual</span></div>
       <p class="cap">Creció el PIB real total — explicado en su mayor parte por más personas trabajando, no por producir más en cada hora.</p>
     </div>
   </div>
@@ -510,6 +560,115 @@ function svgEl(tag, attrs){
   return el;
 }
 
+/* ============ MOTION HELPERS ============ */
+var REDUCE_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function easeOutCubic(t){ return 1 - Math.pow(1-t, 3); }
+function animateNumber(el, from, to, duration, formatFn, delay){
+  delay = delay || 0;
+  if (REDUCE_MOTION){ el.textContent = formatFn(to); return; }
+  setTimeout(function(){
+    var start = null;
+    function step(ts){
+      if (!start) start = ts;
+      var p = Math.min(1, (ts-start)/duration);
+      var v = from + (to-from)*easeOutCubic(p);
+      el.textContent = formatFn(v);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }, delay);
+}
+function animateNum(el, attr, from, to, duration, delay){
+  delay = delay || 0;
+  if (REDUCE_MOTION){ el.setAttribute(attr, to); return; }
+  el.setAttribute(attr, from);
+  setTimeout(function(){
+    var start = null;
+    function step(ts){
+      if (!start) start = ts;
+      var p = Math.min(1, (ts-start)/duration);
+      var v = from + (to-from)*easeOutCubic(p);
+      el.setAttribute(attr, v);
+      if (p < 1) requestAnimationFrame(step); else el.setAttribute(attr, to);
+    }
+    requestAnimationFrame(step);
+  }, delay);
+}
+function animateBar(rect, zeroY, y1, duration, delay){
+  delay = delay || 0;
+  function setFinal(){
+    var top = Math.min(zeroY,y1), hgt = Math.max(2, Math.abs(y1-zeroY));
+    rect.setAttribute('y', top); rect.setAttribute('height', hgt);
+  }
+  if (REDUCE_MOTION){ setFinal(); return; }
+  rect.setAttribute('y', zeroY); rect.setAttribute('height', 0);
+  setTimeout(function(){
+    var start = null;
+    function step(ts){
+      if (!start) start = ts;
+      var p = Math.min(1, (ts-start)/duration);
+      var e = easeOutCubic(p);
+      var curFar = zeroY + (y1-zeroY)*e;
+      var top = Math.min(zeroY,curFar), hgt = Math.max(0, Math.abs(curFar-zeroY));
+      rect.setAttribute('y', top); rect.setAttribute('height', hgt);
+      if (p < 1) requestAnimationFrame(step); else setFinal();
+    }
+    requestAnimationFrame(step);
+  }, delay);
+}
+function animateHBar(rect, baseX, farX, duration, delay){
+  delay = delay || 0;
+  function setFinal(){
+    var x = Math.min(baseX,farX), w = Math.max(1, Math.abs(farX-baseX));
+    rect.setAttribute('x', x); rect.setAttribute('width', w);
+  }
+  if (REDUCE_MOTION){ setFinal(); return; }
+  rect.setAttribute('x', baseX); rect.setAttribute('width', 0);
+  setTimeout(function(){
+    var start = null;
+    function step(ts){
+      if (!start) start = ts;
+      var p = Math.min(1, (ts-start)/duration);
+      var e = easeOutCubic(p);
+      var curFar = baseX + (farX-baseX)*e;
+      var x = Math.min(baseX,curFar), w = Math.max(0, Math.abs(curFar-baseX));
+      rect.setAttribute('x', x); rect.setAttribute('width', w);
+      if (p < 1) requestAnimationFrame(step); else setFinal();
+    }
+    requestAnimationFrame(step);
+  }, delay);
+}
+function fadeIn(el, duration, delay){
+  delay = delay || 0;
+  if (REDUCE_MOTION){ el.style.opacity = '1'; return; }
+  el.style.opacity = '0';
+  setTimeout(function(){
+    el.style.transition = 'opacity '+duration+'ms ease, transform '+duration+'ms ease';
+    el.style.opacity = '1';
+  }, delay);
+}
+function drawInPath(pathEl, duration, delay){
+  delay = delay || 0;
+  var len;
+  try{ len = pathEl.getTotalLength(); } catch(e){ return; }
+  if (REDUCE_MOTION || !len){ return; }
+  pathEl.style.strokeDasharray = len;
+  pathEl.style.strokeDashoffset = len;
+  setTimeout(function(){
+    pathEl.style.transition = 'stroke-dashoffset '+duration+'ms cubic-bezier(.16,.8,.24,1)';
+    pathEl.style.strokeDashoffset = '0';
+  }, delay);
+}
+function onceVisible(el, cb, threshold){
+  if (REDUCE_MOTION || !('IntersectionObserver' in window)){ cb(); return; }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (e.isIntersecting){ cb(); io.unobserve(e.target); }
+    });
+  }, {threshold: threshold === undefined ? 0.25 : threshold});
+  io.observe(el);
+}
+
 /* ============ DATA ============ */
 // Aggregate 15-year series (2020 has no comparable GEIH data)
 var YEARS = [2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2021,2022,2023,2024,2025];
@@ -713,18 +872,30 @@ function renderTiles(){
     var growUp = s.g >= 0;
     tile.innerHTML =
       '<div class="label">'+d.label+'</div>' +
-      '<div class="value tabular">'+fmtNum(s.v2025, d.digitsV)+' <small>'+d.unit+'</small></div>' +
-      '<div class="growth '+(growUp?'up':'down')+' tabular">'+fmtPct(s.g, d.digitsG)+' anual</div>' +
+      '<div class="value tabular"><span class="num-val">'+fmtNum(0, d.digitsV)+'</span> <small>'+d.unit+'</small></div>' +
+      '<div class="growth '+(growUp?'up':'down')+' tabular"><span class="grow-val">'+fmtPct(0, d.digitsG)+'</span> anual</div>' +
       '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"></svg>' +
       '<div class="yrs">2010 → 2025</div>';
     host.appendChild(tile);
     var svg = tile.querySelector('svg');
     var strokeCol = cssVar('--navy');
-    svg.appendChild(svgEl('path', {d:ptsToPath(solid1), fill:'none', stroke:strokeCol, 'stroke-width':1.8, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
-    svg.appendChild(svgEl('path', {d:ptsToPath(solid2), fill:'none', stroke:strokeCol, 'stroke-width':1.8, 'stroke-linecap':'round', 'stroke-linejoin':'round'}));
+    var path1 = svgEl('path', {d:ptsToPath(solid1), fill:'none', stroke:strokeCol, 'stroke-width':1.8, 'stroke-linecap':'round', 'stroke-linejoin':'round'});
+    var path2 = svgEl('path', {d:ptsToPath(solid2), fill:'none', stroke:strokeCol, 'stroke-width':1.8, 'stroke-linecap':'round', 'stroke-linejoin':'round'});
+    svg.appendChild(path1);
+    svg.appendChild(path2);
     svg.appendChild(svgEl('path', {d:ptsToPath([pts[gapIndex-1], pts[gapIndex]]), fill:'none', stroke:strokeCol, 'stroke-width':1.4, 'stroke-dasharray':'2,2.5', opacity:'0.5'}));
     var last = pts[pts.length-1];
-    svg.appendChild(svgEl('circle', {cx:last[0], cy:last[1], r:2.6, fill:cssVar('--gold')}));
+    var dot = svgEl('circle', {cx:last[0], cy:last[1], r:2.6, fill:cssVar('--gold')});
+    svg.appendChild(dot);
+
+    var numVal = tile.querySelector('.num-val'), growVal = tile.querySelector('.grow-val');
+    fadeIn(dot, 300, 900);
+    onceVisible(tile, function(){
+      animateNumber(numVal, 0, s.v2025, 900, function(v){ return fmtNum(v, d.digitsV); });
+      animateNumber(growVal, 0, s.g, 900, function(v){ return fmtPct(v, d.digitsG); });
+      drawInPath(path1, 850, 60);
+      drawInPath(path2, 550, 620);
+    }, 0.4);
   });
 }
 
@@ -754,12 +925,15 @@ function renderDecomp(){
   var zeroY = yScale(0);
   svg.appendChild(svgEl('line', {x1:marginL, x2:w-marginR, y1:zeroY, y2:zeroY, class:'baseline'}));
   var bw = plotW / data.length;
+  var bars = [];
   data.forEach(function(d,i){
     var cx = marginL + bw*i + bw/2;
     var barW = bw*0.46;
     var y0 = yScale(0), y1 = yScale(d.v);
     var top = Math.min(y0,y1), hgt = Math.max(2, Math.abs(y1-y0));
-    svg.appendChild(svgEl('rect', {x:cx-barW/2, y:top, width:barW, height:hgt, rx:4, fill:d.color, opacity: d.isTotal?1:0.92}));
+    var rect = svgEl('rect', {x:cx-barW/2, y:y0, width:barW, height:0, rx:4, fill:d.color, opacity: d.isTotal?1:0.92});
+    svg.appendChild(rect);
+    bars.push({rect:rect, y0:y0, y1:y1});
     var lbl = svgEl('text', {x:cx, y: d.v>=0 ? top-8 : top+hgt+16, class:'value-label', 'text-anchor':'middle'});
     lbl.textContent = fmtPct(d.v);
     svg.appendChild(lbl);
@@ -769,8 +943,14 @@ function renderDecomp(){
     var sb = svgEl('text', {x:cx, y:h-14, class:'mark-label', 'text-anchor':'middle', fill:cssVar('--chart-muted')});
     sb.textContent = d.sub;
     svg.appendChild(sb);
+    fadeIn(lbl, 400, 500 + i*130);
+    fadeIn(nm, 400, 120);
+    fadeIn(sb, 400, 120);
   });
   host.appendChild(svg);
+  onceVisible(host, function(){
+    bars.forEach(function(b,i){ animateBar(b.rect, b.y0, b.y1, 700, i*130); });
+  }, 0.35);
 }
 
 /* ============ 3. QUADRANT BUBBLE CHART ============ */
@@ -859,12 +1039,13 @@ function renderQuad(){
   var pibMax = Math.max.apply(null, SECTORS.map(function(s){return s.pib2025;}));
   function rScale(v){ return rMin + Math.sqrt(v/pibMax) * (rMax-rMin); }
 
+  var bubbles = [];
   SECTORS.forEach(function(s){
     var q = quadrantOf(s);
     var col = 'var(--' + ({acel:'orange',auge:'aqua',rezag:'gray-mid',decl:'blue'})[q] + ')';
     var cx = xScale(s.hora2025), cy = yScale(s.horaG*100), r = rScale(s.pib2025);
     var dim = (quadActiveFilter !== 'all' && quadActiveFilter !== q);
-    var g = svgEl('g', {opacity: dim ? 0.18 : 1, style:'cursor:pointer;transition:opacity .15s'});
+    var g = svgEl('g', {'data-bubble':'1', opacity: dim ? 0.18 : 1, style:'cursor:pointer'});
     var circ = svgEl('circle', {cx:cx, cy:cy, r:r, fill:col, 'fill-opacity':0.5, stroke:col, 'stroke-width':1.6});
     g.appendChild(circ);
     var labelY = cy - r - 6;
@@ -885,8 +1066,15 @@ function renderQuad(){
     });
     g.addEventListener('mouseleave', hideTooltip);
     svg.appendChild(g);
+    bubbles.push({circ:circ, r:r, lbl:lbl});
   });
   host.appendChild(svg);
+  onceVisible(host, function(){
+    bubbles.forEach(function(b,i){
+      animateNum(b.circ, 'r', 0, b.r, 550, i*55);
+      fadeIn(b.lbl, 350, 250 + i*55);
+    });
+  }, 0.3);
 }
 
 /* ============ 4. RANKING BAR CHART ============ */
@@ -902,25 +1090,33 @@ function renderRank(){
   var midX = marginL + plotW/2;
   var svg = svgEl('svg', {viewBox:'0 0 '+w+' '+h});
   svg.appendChild(svgEl('line', {x1:midX, x2:midX, y1:marginT, y2:h-marginB, class:'baseline'}));
+  var hbars = [];
   data.forEach(function(d,i){
     var cy = marginT + rowH*i + rowH/2;
     var barW = xScale(Math.abs(d.horaG));
     var isPos = d.horaG >= 0;
-    var x0 = isPos ? midX : midX - barW;
+    var farX = isPos ? midX+barW : midX-barW;
     var col = isPos ? cssVar('--blue') : cssVar('--red');
-    svg.appendChild(svgEl('rect', {x:x0, y:cy-9, width:Math.max(1,barW), height:18, rx:4, fill:col, opacity:0.88}));
+    var rect = svgEl('rect', {x:midX, y:cy-9, width:0, height:18, rx:4, fill:col, opacity:0.88});
+    svg.appendChild(rect);
+    hbars.push({rect:rect, farX:farX});
     var nm = svgEl('text', {x:marginL-12, y:cy+4, class:'mark-label', 'text-anchor':'end', 'font-weight':'700'});
     nm.textContent = d.short;
     svg.appendChild(nm);
     var val = svgEl('text', {x: isPos ? midX+barW+8 : midX-barW-8, y:cy+4, class:'value-label', 'text-anchor': isPos?'start':'end'});
     val.textContent = fmtPct(d.horaG);
     svg.appendChild(val);
+    fadeIn(nm, 300, 100);
+    fadeIn(val, 300, 400 + i*55);
   });
   var lblAgg = svgEl('text', {x:midX, y:h-marginB+18, class:'axis-label', 'text-anchor':'middle'});
   lblAgg.textContent = '0% · promedio del país: '+fmtPct(TOTAL_SUMMARY.hora.g);
   svg.appendChild(lblAgg);
   host.appendChild(svg);
   host.querySelector('svg').style.height = h + 'px';
+  onceVisible(host, function(){
+    hbars.forEach(function(b,i){ animateHBar(b.rect, midX, b.farX, 600, i*55); });
+  }, 0.3);
 }
 
 /* ============ 5. GAINERS / LOSERS LISTS ============ */
@@ -1033,12 +1229,15 @@ function renderCorr(){
   var yt = svgEl('text', {x:12, y:marginT+plotH/2, class:'axis-label', 'text-anchor':'middle', transform:'rotate(-90 12 '+(marginT+plotH/2)+')'}); yt.textContent='Crecimiento PIB/hora'; svg.appendChild(yt);
 
   var x1 = xMin, x2 = xMax;
-  svg.appendChild(svgEl('line', {x1:xScale(x1), x2:xScale(x2), y1:yScale(intercept+slope*x1), y2:yScale(intercept+slope*x2), stroke:'var(--red)', 'stroke-width':1.6, 'stroke-dasharray':'5,3', opacity:0.75}));
+  var trendLine = svgEl('line', {x1:xScale(x1), x2:xScale(x2), y1:yScale(intercept+slope*x1), y2:yScale(intercept+slope*x2), stroke:'var(--red)', 'stroke-width':1.6, 'stroke-dasharray':'5,3', opacity:0.75});
+  svg.appendChild(trendLine);
 
+  var points = [];
   SECTORS.forEach(function(s){
     var cx = xScale(s.ocupG*100), cy = yScale(s.horaG*100);
-    var g = svgEl('g', {style:'cursor:pointer'});
-    g.appendChild(svgEl('circle', {cx:cx, cy:cy, r:6, fill:'var(--blue)', 'fill-opacity':0.6, stroke:'var(--blue)', 'stroke-width':1.4}));
+    var g = svgEl('g', {'data-pt':'1', style:'cursor:pointer'});
+    var circ = svgEl('circle', {cx:cx, cy:cy, r:0, fill:'var(--blue)', 'fill-opacity':0.6, stroke:'var(--blue)', 'stroke-width':1.4});
+    g.appendChild(circ);
     g.addEventListener('mousemove', function(ev){
       showTooltip('<div class="tt-title">'+s.name+'</div>' +
         '<div class="tt-row"><span>Crecimiento empleo</span><b>'+fmtPct(s.ocupG)+'</b></div>' +
@@ -1046,9 +1245,14 @@ function renderCorr(){
     });
     g.addEventListener('mouseleave', hideTooltip);
     svg.appendChild(g);
+    points.push(circ);
   });
   host.appendChild(svg);
   document.getElementById('corrStat').textContent = 'Correlación en esta muestra de 13 ramas: r = ' + r.toFixed(2).replace('.', ',') + ' · el informe completo usa 50 subactividades y reporta r ≈ −0,85.';
+  onceVisible(host, function(){
+    points.forEach(function(c,i){ animateNum(c, 'r', 0, 6, 450, 350 + i*45); });
+    drawInPath(trendLine, 700, 60);
+  }, 0.3);
 }
 
 /* ============ RENDER ALL (re-run on theme change for CSS var colors baked into SVG) ============ */
@@ -1071,6 +1275,55 @@ renderTable();
 renderCorr();
 
 window.addEventListener('resize', function(){ /* SVGs are viewBox-scaled, no-op */ });
+
+/* ============ SCROLL-DRIVEN POLISH ============ */
+function setupReveal(){
+  var els = document.querySelectorAll('.section-head, .chart-card, .mini-card, .concl-card, .formula-box, .callout');
+  if (REDUCE_MOTION || !('IntersectionObserver' in window)){
+    els.forEach(function(el){ el.classList.add('reveal','in'); });
+    return;
+  }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, {threshold:0.12});
+  els.forEach(function(el){ el.classList.add('reveal'); io.observe(el); });
+}
+setupReveal();
+
+function animateHeroStats(){
+  document.querySelectorAll('.hero-stat .num[data-to]').forEach(function(el, i){
+    var to = parseFloat(el.getAttribute('data-to'));
+    var span = el.querySelector('.num-val');
+    animateNumber(span, 0, to, 1100, function(v){ return (v>=0?'+':'')+v.toFixed(2).replace('.',','); }, 250 + i*120);
+  });
+}
+animateHeroStats();
+
+(function setupScrollSpy(){
+  var ids = ['resumen','composicion','sectores','ranking','lupa','empleo','conclusiones'];
+  var navMap = {};
+  document.querySelectorAll('.navlinks a').forEach(function(a){ navMap[a.getAttribute('href').slice(1)] = a; });
+  if (!('IntersectionObserver' in window)) return;
+  var spyIO = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (e.isIntersecting){
+        Object.keys(navMap).forEach(function(k){ navMap[k].classList.remove('active'); });
+        var link = navMap[e.target.id];
+        if (link) link.classList.add('active');
+      }
+    });
+  }, {rootMargin:'-45% 0px -50% 0px', threshold:0});
+  ids.forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) spyIO.observe(el);
+  });
+})();
+
+window.addEventListener('scroll', function(){
+  document.querySelector('.topbar').classList.toggle('scrolled', window.scrollY > 8);
+}, {passive:true});
 
 })();
 </script>
