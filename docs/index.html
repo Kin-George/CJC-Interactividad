@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>¿Colombia produce más por cada hora de trabajo? — Informe 01, CJC</title>
 <style>
   :root{
@@ -72,8 +74,9 @@
   .topbar-inner{ max-width:1080px; margin:0 auto; padding:12px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
   .brand{ display:flex; align-items:center; gap:10px; font-size:0.85rem; color:var(--ink-2); white-space:nowrap; }
   .brand b{ color:var(--ink); }
-  .navlinks{ display:flex; gap:18px; flex-wrap:wrap; }
-  .navlinks a{ font-size:0.82rem; text-decoration:none; color:var(--ink-2); border-bottom:1px solid transparent; padding-bottom:2px; }
+  .brand-short{ display:none; }
+  .navlinks{ display:flex; gap:18px; flex-wrap:wrap; min-width:0; }
+  .navlinks a{ font-size:0.82rem; text-decoration:none; color:var(--ink-2); border-bottom:1px solid transparent; padding-bottom:2px; white-space:nowrap; }
   .navlinks a:hover{ color:var(--navy); border-color:var(--navy); }
   .theme-toggle{
     border:1px solid var(--border-strong); background:var(--surface); color:var(--ink-2);
@@ -227,10 +230,40 @@
   .foot-block p, .foot-block li{ line-height:1.7; }
   .foot-block ul{ list-style:none; margin:0; padding:0; }
 
-  @media (max-width:600px){
-    .hero{ padding:44px 0 28px; }
-    section{ padding:40px 0; }
-    .navlinks{ display:none; }
+  @media (max-width:680px){
+    .wrap, .wrap-wide{ padding:0 18px; }
+    .topbar-inner{ padding:10px 16px; gap:10px; }
+    .brand{ font-size:0.78rem; gap:6px; }
+    .brand-full{ display:none; }
+    .brand-short{ display:inline; }
+    .navlinks{
+      order:3; width:100%; flex-wrap:nowrap; gap:16px;
+      overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;
+      padding-top:2px; margin-top:-2px;
+    }
+    .navlinks::-webkit-scrollbar{ display:none; }
+    .navlinks a{ font-size:0.78rem; }
+    .topbar-inner{ flex-wrap:wrap; }
+
+    .hero{ padding:36px 0 24px; }
+    .hero h1{ max-width:100%; }
+    .hero-figure{ gap:24px; margin-top:26px; padding-top:20px; }
+    .hero-stat{ min-width:0; width:100%; }
+
+    section{ padding:36px 0; }
+    .section-head{ margin-bottom:20px; }
+
+    .formula-box{ padding:20px 16px; gap:6px 10px; }
+    .formula-term{ min-width:0; flex:1 1 40%; padding:8px 4px; }
+    .formula-op{ flex:0 0 auto; }
+
+    .chart-card{ padding:16px 14px 12px; }
+    .rank-item .nm{ font-size:0.88rem; }
+    .mini-card{ padding:16px 16px; }
+
+    .concl-card{ padding:18px; }
+
+    footer{ padding:32px 0 48px; }
   }
 
   /* ===== Motion & dynamism ===== */
@@ -286,7 +319,7 @@
 
 <div class="topbar">
   <div class="topbar-inner">
-    <div class="brand">🔵🟡 <b>Centro Javeriano de Competitividad</b></div>
+    <div class="brand">🔵🟡 <span class="brand-full"><b>Centro Javeriano de Competitividad</b></span><b class="brand-short">CJC</b></div>
     <div class="navlinks">
       <a href="#resumen">Resumen</a>
       <a href="#composicion">Composición</a>
@@ -558,6 +591,15 @@ function svgEl(tag, attrs){
   var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
   for (var k in attrs){ el.setAttribute(k, attrs[k]); }
   return el;
+}
+function measureW(host, fallback){
+  return host.clientWidth || (host.parentElement && host.parentElement.clientWidth) || fallback;
+}
+function truncateLabel(label, maxWidthPx, fontSizePx){
+  var avgCharW = fontSizePx*0.56;
+  var maxChars = Math.floor(maxWidthPx/avgCharW);
+  if (label.length <= maxChars || maxChars < 4) return label;
+  return label.slice(0, maxChars-1) + '…';
 }
 
 /* ============ MOTION HELPERS ============ */
@@ -903,13 +945,15 @@ function renderTiles(){
 function renderDecomp(){
   var host = document.getElementById('decompChart');
   host.innerHTML = '';
+  var w = measureW(host, 780);
+  var compact = w < 480;
   var data = [
-    {label:'Ocupados', sub:'más gente trabajando', v:0.0209, color:cssVar('--blue')},
-    {label:'Horas por trabajador', sub:'menos horas por persona', v:-0.0045, color:cssVar('--red')},
-    {label:'PIB por hora', sub:'más producto por hora', v:0.0151, color:cssVar('--aqua')},
-    {label:'PIB total', sub:'resultado', v:0.0316, color:cssVar('--gray-mid'), isTotal:true}
+    {label:'Ocupados', shortLabel:'Ocupados', sub:'más gente trabajando', v:0.0209, color:cssVar('--blue')},
+    {label:'Horas por trabajador', shortLabel:'Horas/trab.', sub:'menos horas por persona', v:-0.0045, color:cssVar('--red')},
+    {label:'PIB por hora', shortLabel:'PIB/hora', sub:'más producto por hora', v:0.0151, color:cssVar('--aqua')},
+    {label:'PIB total', shortLabel:'PIB total', sub:'resultado', v:0.0316, color:cssVar('--gray-mid'), isTotal:true}
   ];
-  var w = 780, h = 300, marginL = 20, marginR = 20, marginT = 20, marginB = 46;
+  var h = compact ? 260 : 300, marginL = compact?10:20, marginR = compact?10:20, marginT = 20, marginB = compact?44:46;
   var plotW = w - marginL - marginR, plotH = h - marginT - marginB;
   var minV = -0.012, maxV = 0.036;
   function yScale(v){ return marginT + plotH - ((v - minV)/(maxV-minV))*plotH; }
@@ -934,18 +978,20 @@ function renderDecomp(){
     var rect = svgEl('rect', {x:cx-barW/2, y:y0, width:barW, height:0, rx:4, fill:d.color, opacity: d.isTotal?1:0.92});
     svg.appendChild(rect);
     bars.push({rect:rect, y0:y0, y1:y1});
-    var lbl = svgEl('text', {x:cx, y: d.v>=0 ? top-8 : top+hgt+16, class:'value-label', 'text-anchor':'middle'});
+    var lbl = svgEl('text', {x:cx, y: d.v>=0 ? top-8 : top+hgt+16, class:'value-label', 'text-anchor':'middle', 'font-size': compact?10:11});
     lbl.textContent = fmtPct(d.v);
     svg.appendChild(lbl);
-    var nm = svgEl('text', {x:cx, y:h-28, class:'mark-label', 'text-anchor':'middle', 'font-weight':'700'});
-    nm.textContent = d.label;
+    var nm = svgEl('text', {x:cx, y: compact ? h-30 : h-28, class:'mark-label', 'text-anchor':'middle', 'font-weight':'700', 'font-size': compact?9.5:10.5});
+    nm.textContent = compact ? d.shortLabel : d.label;
     svg.appendChild(nm);
-    var sb = svgEl('text', {x:cx, y:h-14, class:'mark-label', 'text-anchor':'middle', fill:cssVar('--chart-muted')});
-    sb.textContent = d.sub;
-    svg.appendChild(sb);
     fadeIn(lbl, 400, 500 + i*130);
     fadeIn(nm, 400, 120);
-    fadeIn(sb, 400, 120);
+    if (!compact){
+      var sb = svgEl('text', {x:cx, y:h-14, class:'mark-label', 'text-anchor':'middle', fill:cssVar('--chart-muted')});
+      sb.textContent = d.sub;
+      svg.appendChild(sb);
+      fadeIn(sb, 400, 120);
+    }
   });
   host.appendChild(svg);
   onceVisible(host, function(){
@@ -988,7 +1034,9 @@ function renderQuadChips(){
 function renderQuad(){
   var host = document.getElementById('quadChart');
   host.innerHTML = '';
-  var w = 900, h = 520, marginL = 56, marginR = 24, marginT = 24, marginB = 46;
+  var w = measureW(host, 900);
+  var compact = w < 480;
+  var h = compact ? Math.round(w*0.98) : 520, marginL = compact?32:56, marginR = compact?12:24, marginT = compact?14:24, marginB = compact?34:46;
   var plotW = w-marginL-marginR, plotH = h-marginT-marginB;
   var xMax = 130, yMin = -5, yMax = 8.5;
   function xScale(v){ return marginL + (v/xMax)*plotW; }
@@ -1016,26 +1064,26 @@ function renderQuad(){
   };
   QUAD_DEFS.forEach(function(q){
     var p = qLabelPos[q.id];
-    var t = svgEl('text', {x:p[0], y:p[1], class:'mark-label', 'text-anchor':p[2], 'font-weight':'800', fill:'var(--ink-2)'});
+    var t = svgEl('text', {x:p[0], y:p[1], class:'mark-label', 'text-anchor':p[2], 'font-weight':'800', fill:'var(--ink-2)', 'font-size': compact?7.5:10.5});
     t.textContent = q.name.toUpperCase();
     svg.appendChild(t);
   });
   // grid + axes
   for (var gx=0; gx<=xMax; gx+=20){
     svg.appendChild(svgEl('line', {x1:xScale(gx), x2:xScale(gx), y1:marginT, y2:marginT+plotH, class:'grid-line'}));
-    var lx = svgEl('text', {x:xScale(gx), y:h-14, class:'axis-label', 'text-anchor':'middle'}); lx.textContent = gx; svg.appendChild(lx);
+    var lx = svgEl('text', {x:xScale(gx), y:h-14, class:'axis-label', 'text-anchor':'middle', 'font-size': compact?9:11}); lx.textContent = gx; svg.appendChild(lx);
   }
   for (var gy=-4; gy<=8; gy+=2){
     svg.appendChild(svgEl('line', {x1:marginL, x2:marginL+plotW, y1:yScale(gy), y2:yScale(gy), class:'grid-line'}));
-    var ly = svgEl('text', {x:marginL-8, y:yScale(gy)+3, class:'axis-label', 'text-anchor':'end'}); ly.textContent = gy+'%'; svg.appendChild(ly);
+    var ly = svgEl('text', {x:marginL-8, y:yScale(gy)+3, class:'axis-label', 'text-anchor':'end', 'font-size': compact?9:11}); ly.textContent = gy+'%'; svg.appendChild(ly);
   }
-  var xAxTitle = svgEl('text', {x:marginL+plotW/2, y:h-2, class:'axis-label', 'text-anchor':'middle'}); xAxTitle.textContent = 'PIB por hora trabajada en 2025 (miles $ de 2015)'; svg.appendChild(xAxTitle);
-  var yAxTitle = svgEl('text', {x:14, y:marginT+plotH/2, class:'axis-label', 'text-anchor':'middle', transform:'rotate(-90 14 '+(marginT+plotH/2)+')'}); yAxTitle.textContent = 'Crecimiento anual del PIB por hora'; svg.appendChild(yAxTitle);
+  var xAxTitle = svgEl('text', {x:marginL+plotW/2, y:h-2, class:'axis-label', 'text-anchor':'middle', 'font-size': compact?9:11}); xAxTitle.textContent = compact ? 'PIB/hora 2025 (miles $2015)' : 'PIB por hora trabajada en 2025 (miles $ de 2015)'; svg.appendChild(xAxTitle);
+  var yAxTitle = svgEl('text', {x:compact?11:14, y:marginT+plotH/2, class:'axis-label', 'text-anchor':'middle', 'font-size': compact?9:11, transform:'rotate(-90 '+(compact?11:14)+' '+(marginT+plotH/2)+')'}); yAxTitle.textContent = compact ? 'Crecimiento PIB/hora' : 'Crecimiento anual del PIB por hora'; svg.appendChild(yAxTitle);
   // threshold lines
   svg.appendChild(svgEl('line', {x1:xScale(xThresh), x2:xScale(xThresh), y1:marginT, y2:marginT+plotH, stroke:'var(--navy)', 'stroke-width':1, 'stroke-dasharray':'4,3', opacity:0.55}));
   svg.appendChild(svgEl('line', {x1:marginL, x2:marginL+plotW, y1:yScale(yThresh), y2:yScale(yThresh), stroke:'var(--navy)', 'stroke-width':1, 'stroke-dasharray':'4,3', opacity:0.55}));
 
-  var rMax = 46, rMin = 12;
+  var rMax = compact?26:46, rMin = compact?7:12;
   var pibMax = Math.max.apply(null, SECTORS.map(function(s){return s.pib2025;}));
   function rScale(v){ return rMin + Math.sqrt(v/pibMax) * (rMax-rMin); }
 
@@ -1050,7 +1098,7 @@ function renderQuad(){
     g.appendChild(circ);
     var labelY = cy - r - 6;
     if (labelY < marginT+10) labelY = cy + r + 13;
-    var lbl = svgEl('text', {x:cx, y:labelY, class:'mark-label', 'text-anchor':'middle', 'font-weight':'700'});
+    var lbl = svgEl('text', {x:cx, y:labelY, class:'mark-label', 'text-anchor':'middle', 'font-weight':'700', 'font-size': compact?8:10.5});
     lbl.textContent = s.short;
     g.appendChild(lbl);
     g.addEventListener('mousemove', function(ev){
@@ -1082,7 +1130,10 @@ function renderRank(){
   var host = document.getElementById('rankChart');
   host.innerHTML = '';
   var data = SECTORS.slice().sort(function(a,b){ return b.horaG - a.horaG; });
-  var w = 780, rowH = 34, marginL = 190, marginR = 60, marginT = 10, marginB = 30;
+  var w = measureW(host, 780);
+  var compact = w < 480;
+  var rowH = compact?30:34, marginL = compact?98:190, marginR = compact?34:60, marginT = 10, marginB = compact?34:30;
+  var fs = compact?9:10.5, fsVal = compact?9.5:11;
   var plotW = w - marginL - marginR;
   var h = marginT + marginB + rowH*data.length;
   var maxAbs = Math.max.apply(null, data.map(function(d){return Math.abs(d.horaG);})) * 1.15;
@@ -1100,17 +1151,17 @@ function renderRank(){
     var rect = svgEl('rect', {x:midX, y:cy-9, width:0, height:18, rx:4, fill:col, opacity:0.88});
     svg.appendChild(rect);
     hbars.push({rect:rect, farX:farX});
-    var nm = svgEl('text', {x:marginL-12, y:cy+4, class:'mark-label', 'text-anchor':'end', 'font-weight':'700'});
-    nm.textContent = d.short;
+    var nm = svgEl('text', {x:marginL-10, y:cy+4, class:'mark-label', 'text-anchor':'end', 'font-weight':'700', 'font-size':fs});
+    nm.textContent = truncateLabel(d.short, marginL-16, fs);
     svg.appendChild(nm);
-    var val = svgEl('text', {x: isPos ? midX+barW+8 : midX-barW-8, y:cy+4, class:'value-label', 'text-anchor': isPos?'start':'end'});
+    var val = svgEl('text', {x: isPos ? midX+barW+7 : midX-barW-7, y:cy+4, class:'value-label', 'text-anchor': isPos?'start':'end', 'font-size':fsVal});
     val.textContent = fmtPct(d.horaG);
     svg.appendChild(val);
     fadeIn(nm, 300, 100);
     fadeIn(val, 300, 400 + i*55);
   });
-  var lblAgg = svgEl('text', {x:midX, y:h-marginB+18, class:'axis-label', 'text-anchor':'middle'});
-  lblAgg.textContent = '0% · promedio del país: '+fmtPct(TOTAL_SUMMARY.hora.g);
+  var lblAgg = svgEl('text', {x:midX, y:h-marginB+18, class:'axis-label', 'text-anchor':'middle', 'font-size': compact?9:11});
+  lblAgg.textContent = compact ? 'Promedio país: '+fmtPct(TOTAL_SUMMARY.hora.g) : '0% · promedio del país: '+fmtPct(TOTAL_SUMMARY.hora.g);
   svg.appendChild(lblAgg);
   host.appendChild(svg);
   host.querySelector('svg').style.height = h + 'px';
@@ -1198,7 +1249,9 @@ function renderTable(){
 function renderCorr(){
   var host = document.getElementById('corrChart');
   host.innerHTML = '';
-  var w = 420, h = 340, marginL = 46, marginR = 16, marginT = 16, marginB = 40;
+  var w = measureW(host, 420);
+  var compact = w < 380;
+  var h = compact ? Math.round(w*0.86) : 340, marginL = compact?38:46, marginR = compact?12:16, marginT = compact?12:16, marginB = compact?34:40;
   var plotW = w-marginL-marginR, plotH = h-marginT-marginB;
   var xs = SECTORS.map(function(s){ return s.ocupG*100; });
   var ys = SECTORS.map(function(s){ return s.horaG*100; });
@@ -1216,17 +1269,18 @@ function renderCorr(){
   var slope = (sxx-n*mx*mx) ? num/(sxx-n*mx*mx) : 0;
   var intercept = my - slope*mx;
 
+  var fs = compact?9:11;
   var svg = svgEl('svg', {viewBox:'0 0 '+w+' '+h});
   for (var gx=Math.ceil(xMin); gx<=xMax; gx+=2){
     svg.appendChild(svgEl('line', {x1:xScale(gx), x2:xScale(gx), y1:marginT, y2:marginT+plotH, class:'grid-line'}));
-    var lx = svgEl('text', {x:xScale(gx), y:h-16, class:'axis-label', 'text-anchor':'middle'}); lx.textContent=gx+'%'; svg.appendChild(lx);
+    var lx = svgEl('text', {x:xScale(gx), y:h-16, class:'axis-label', 'text-anchor':'middle', 'font-size':fs}); lx.textContent=gx+'%'; svg.appendChild(lx);
   }
   for (var gy=Math.ceil(yMin); gy<=yMax; gy+=2){
     svg.appendChild(svgEl('line', {x1:marginL, x2:marginL+plotW, y1:yScale(gy), y2:yScale(gy), class:'grid-line'}));
-    var ly = svgEl('text', {x:marginL-8, y:yScale(gy)+3, class:'axis-label', 'text-anchor':'end'}); ly.textContent=gy+'%'; svg.appendChild(ly);
+    var ly = svgEl('text', {x:marginL-8, y:yScale(gy)+3, class:'axis-label', 'text-anchor':'end', 'font-size':fs}); ly.textContent=gy+'%'; svg.appendChild(ly);
   }
-  var xt = svgEl('text', {x:marginL+plotW/2, y:h-2, class:'axis-label', 'text-anchor':'middle'}); xt.textContent='Crecimiento del empleo'; svg.appendChild(xt);
-  var yt = svgEl('text', {x:12, y:marginT+plotH/2, class:'axis-label', 'text-anchor':'middle', transform:'rotate(-90 12 '+(marginT+plotH/2)+')'}); yt.textContent='Crecimiento PIB/hora'; svg.appendChild(yt);
+  var xt = svgEl('text', {x:marginL+plotW/2, y:h-2, class:'axis-label', 'text-anchor':'middle', 'font-size':fs}); xt.textContent='Crecimiento del empleo'; svg.appendChild(xt);
+  var yt = svgEl('text', {x:compact?10:12, y:marginT+plotH/2, class:'axis-label', 'text-anchor':'middle', 'font-size':fs, transform:'rotate(-90 '+(compact?10:12)+' '+(marginT+plotH/2)+')'}); yt.textContent='Crecimiento PIB/hora'; svg.appendChild(yt);
 
   var x1 = xMin, x2 = xMax;
   var trendLine = svgEl('line', {x1:xScale(x1), x2:xScale(x2), y1:yScale(intercept+slope*x1), y2:yScale(intercept+slope*x2), stroke:'var(--red)', 'stroke-width':1.6, 'stroke-dasharray':'5,3', opacity:0.75});
@@ -1274,7 +1328,16 @@ initExplorer();
 renderTable();
 renderCorr();
 
-window.addEventListener('resize', function(){ /* SVGs are viewBox-scaled, no-op */ });
+var resizeTimer;
+window.addEventListener('resize', function(){
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(function(){
+    renderDecomp();
+    renderQuad();
+    renderRank();
+    renderCorr();
+  }, 200);
+});
 
 /* ============ SCROLL-DRIVEN POLISH ============ */
 function setupReveal(){
